@@ -13,7 +13,7 @@ import speechpy as speechpy
 
 class DataGenerator(Sequence):
 
-    def __init__(self, path, num_classes=10, batch_size=1, num_utterances=20, num_frames=80, num_coefficient=40):
+    def __init__(self, path, num_classes=10, batch_size=20, num_utterances=20, num_frames=80, num_coefficient=40):
 
         self.num_classes = num_classes
 
@@ -29,6 +29,9 @@ class DataGenerator(Sequence):
 
         self.data_len = len(features)
         self.batch_size = batch_size
+
+        if self.batch_size > self.data_len:
+            self.batch_size = self.data_len
 
         self.shuffle = True
 

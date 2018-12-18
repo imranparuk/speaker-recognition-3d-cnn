@@ -8,17 +8,18 @@ from tensorflow.python.keras.optimizers import Adam
 from tensorflow.python.keras.losses import categorical_crossentropy
 
 from dataset import DataGenerator
-from model import SpeechModel
+from model import _3d_cnn_model
 
 if __name__ == "__main__":
+
     num_classes = 10
     input_shape = (20, 80, 40, 1)
     epochs = 1
 
-    train_iter = DataGenerator('/home/imran/Documents/projects/wd/wd-alpha-dawg/voice/_3d_cnn/dummy_dir/', 10)
+    train_iter = DataGenerator('./dummy_dir/', 10)
 
+    model = _3d_cnn_model(input_shape, num_classes)
 
-    model = SpeechModel().three_d_cnn_model_functional(input_shape, num_classes)
     opt = Adam()
     loss = categorical_crossentropy
 
@@ -27,7 +28,7 @@ if __name__ == "__main__":
                   metrics=['accuracy'])
 
     model.fit_generator(train_iter,
-                        epochs=1,
+                        epochs=epochs,
                         callbacks=None,
                         )
 

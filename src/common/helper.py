@@ -1,101 +1,46 @@
-from __future__ import absolute_import
-from __future__ import print_function
-
 import numpy as np
 import os
 from scipy.io import wavfile
 from pathlib import Path
 
-from tensorflow.python.keras.utils import Sequence
-from tensorflow.python.keras.utils import to_categorical
+from src.common.speechpy import lmfe
 
-import speechpy as speechpy
 
-class DataGenerator(Sequence):
+def preproc(file, info):
+    num_utterances, num_frames, num_coefficient = info
 
-    def __init__(self, path, num_classes=10, batch_size=20, num_utterances=20, num_frames=80, num_coefficient=40):
+    sample_freq, raw_seq = wavfile.read(str(file))
+
+    raw_seq = raw_seq.astype(np.float32)
+    logenergy = lmfe(raw_seq, sampling_frequency=sample_freq, frame_length=0.025, frame_stride=0.01,
+                     num_filters=num_coefficient, fft_length=512, low_frequency=0,
+                     high_frequency=None)
+
+    feature_cube = np.ones((num_utterances, num_frames, num_coefficient, 1), dtype=np.float32)
+
+    idx = range(num_utterances)
+    for num, index in enumerate(idx):
+        log_energy_slice = logenergy[index:index + num_frames, :]
+        feature_cube[num, :log_energy_slice.shape[0], :log_energy_slice.shape[1], 0] = log_energy_slice
+
+    return feature_cube
+
+class VoxCelebHelper():
+
+    def __init__(self, path, num_classes, info, return_func=None):
 
         self.num_classes = num_classes
+        self.num_utterances, self.num_frames, self.num_coefficient = info
 
         self.check_dataset_dict = self.generate_dataset_dict_helper(path)
         self.dataset_dict = self.check_dataset(self.check_dataset_dict)
 
         self.mapping = self.create_speaker_id_list(self.dataset_dict)
 
-        features, labels = self.return_format(self.dataset_dict)
+        self.features, self.labels = return_func(self.dataset_dict, self.mapping, self.num_classes)
 
-        self.features = np.array(features)
-        self.labels = np.array(labels)
-
-        self.data_len = len(features)
-        self.batch_size = batch_size
-
-        if self.batch_size > self.data_len:
-            self.batch_size = self.data_len
-
-        self.shuffle = True
-
-        self.num_utterances = num_utterances
-        self.num_frames = num_frames
-        self.num_coefficient = num_coefficient
-
-        self.list_IDs = range(0, self.data_len)
-        self.on_epoch_end()
-
-    def __len__(self):
-        'Denotes the number of batches per epoch'
-        return int(np.floor(len(self.list_IDs) / self.batch_size))
-
-    def __getitem__(self, index):
-        'Generate one batch of data'
-        # Generate indexes of the batch
-        indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
-
-        # Find list of IDs
-        idxs = [self.list_IDs[k] for k in indexes]
-        ret_feat = []
-        ret_labs = []
-
-        for idx in idxs:
-            f, l = self.__data_generation(idx)
-            ret_feat.append(f)
-            ret_labs.append(l)
-
-        np_f = np.vstack(ret_feat)
-        np_l = np.vstack(ret_labs)
-
-        return np_f, np_l
-
-    def on_epoch_end(self):
-        'Updates indexes after each epoch'
-        self.indexes = np.arange(len(self.list_IDs))
-        if self.shuffle == True:
-            np.random.shuffle(self.indexes)
-
-    def __data_generation(self, idx):
-        feat = self.preproc(self.features[idx])
-        lab = self.labels[idx]
-
-        return feat, lab
-
-    def preproc(self, file):
-        sample_freq, raw_seq = wavfile.read(str(file))
-
-        raw_seq = raw_seq.astype(np.float32)
-        logenergy = speechpy.lmfe(raw_seq, sampling_frequency=sample_freq, frame_length=0.025, frame_stride=0.01,
-                                          num_filters=self.num_coefficient, fft_length=512, low_frequency=0,
-                                          high_frequency=None)
-
-        feature_cube = np.ones((self.num_utterances, self.num_frames, self.num_coefficient, 1), dtype=np.float32)
-
-        idx = range(self.num_utterances)
-        for num, index in enumerate(idx):
-            log_energy_slice = logenergy[index:index + self.num_frames, :]
-            feature_cube[num, :log_energy_slice.shape[0], :log_energy_slice.shape[1], 0] = log_energy_slice
-
-        feature_cube = np.expand_dims(feature_cube, axis=0)
-
-        return feature_cube
+    def __call__(self, *args, **kwargs):
+        return self.features, self.labels
 
     @staticmethod
     def create_speaker_id_list(_speaker_dict):
@@ -174,16 +119,6 @@ class DataGenerator(Sequence):
                 count += 1
         return _labels_dict
 
-    def return_format(self, _dict):
-
-        ret_ = list()
-        for speaker, files in _dict.items():
-            for file in files:
-                spk = self.mapping.index(speaker)
-                feat = file
-                ret_.append([feat, to_categorical(spk, self.num_classes)])
-
-        return map(list, zip(*ret_))
 
     @staticmethod
     def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█'):

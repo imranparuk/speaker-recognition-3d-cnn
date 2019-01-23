@@ -5,6 +5,7 @@ Keras implimentation of "Deep Learning &amp; 3D Convolutional Neural Networks fo
 ### Prerequisites
 
 + tensorflow / tensorflow-gpu
++ pytorch
 + scipy
 + numpy
 

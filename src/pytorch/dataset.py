@@ -31,7 +31,6 @@ class VoxCelebDataset(Dataset):
         input = self.features[index,...]
         labels = self.labels[index,...]
 
-        print(labels)
         feat = preproc(str(input), self.info).T
 
         return feat, labels

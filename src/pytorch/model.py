@@ -44,8 +44,8 @@ class _3d_cnn(nn.Module):
 
         self.classifier = nn.Sequential(
             Flatten(),
-            nn.Linear(4608, num_classes),
-            nn.Softmax(dim=1)
+            nn.Linear(4608, num_classes)
+            # nn.Softmax(dim=1)
         )
 
         self.weight_init()

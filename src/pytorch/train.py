@@ -37,7 +37,7 @@ def return_format_torch(_dict, _mapping, num_classes):
         for file in files:
             spk = _mapping.index(speaker)
             feat = file
-            ret_.append([feat, one_hot(spk, num_classes)])
+            ret_.append([feat, spk])
 
     return map(list, zip(*ret_))
 
@@ -46,15 +46,21 @@ def return_format_torch(_dict, _mapping, num_classes):
 def train(model, device, train_loader, optimizer, epoch, log_interval=1):
     model.to(device)
     model.train()
-    for batch_idx, (data, target) in enumerate(train_loader):
-        print(data.shape)
 
-        data, target = data.to(device), target.to(device)
-        optimizer.zero_grad()
-        output = model(data)
+    criterion = CrossEntropyLoss()
+
+    for batch_idx, (data, target) in enumerate(train_loader):
         print(target)
-        loss = CrossEntropyLoss(output, target)
+        data, target = data.to(device), target.to(device)
+        data, target = Variable(data), Variable(target)
+
+        optimizer.zero_grad()
+
+        output = model(data)
+
+        loss = criterion(output, target.long())
         loss.backward()
+
         optimizer.step()
         if batch_idx % log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -94,7 +100,6 @@ if __name__ == "__main__":
     info = [20, 80, 40]
     kwargs = {'num_workers': 1, 'pin_memory': True}
 
-    torch.manual_seed(seed)
 
     dataset = VoxCelebDataset(path, batch_size, num_classes, info, return_format_torch)
 
